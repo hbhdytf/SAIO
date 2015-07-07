@@ -20,10 +20,11 @@ sudo apt-get install -y python-software-properties
 # If you want install swift use deb package,enable it
 #sudo add-apt-repository ppa:swift-core/release
 sudo apt-get update
-sudo apt-get install -y curl gcc git-core memcached python-configobj /
-	python-coverage python-dev python-nose python-setuptools /
-	python-simplejson python-xattr sqlite3 xfsprogs python-webob 
-	python-eventlet python-greenlet python-pastedeploy python-netifaces /
+
+sudo apt-get install -y curl gcc git-core memcached python-configobj \
+	python-coverage python-dev python-nose python-setuptools \
+	python-simplejson python-xattr sqlite3 xfsprogs python-webob \
+	python-eventlet python-greenlet python-pastedeploy python-netifaces \
 	memcached
 
 
@@ -35,14 +36,15 @@ sudo password swift
 sudo  apt-get -y install vsftpd 
 
 sudo dd if=/dev/zero of=/srv/swift-disk bs=1024 count=0 seek=1000000
-sudo mkfs.xfs -i size=1024 /srv/swift-disk
-sudo echo "/srv/swift-disk /mnt/sdb1 xfs loop,noatime,nodiratime,nobarrier,logbufs=8 0 0" >> /etc/fstab
-sudo mkdir /mnt/sdb1
-sudo mount /mnt/sdb1
-sudo mkdir /mnt/sdb1/1 /mnt/sdb1/2 /mnt/sdb1/3 /mnt/sdb1/4 /mnt/sdb1/test
-sudo chown -R swift:swift /mnt/sdb1/*
+sudo mkfs.xfs -f -i size=1024 /srv/swift-disk
+echo "/srv/swift-disk /mnt/sdb1 xfs loop,noatime,nodiratime,nobarrier,logbufs=8 0 0" |sudo tee -a /etc/fstab
 
-if ! [ -e /srv ]
+sudo mkdir -p /mnt/sdb1
+sudo mount /mnt/sdb1
+sudo mkdir -p /mnt/sdb1/1 /mnt/sdb1/2 /mnt/sdb1/3 /mnt/sdb1/4 /mnt/sdb1/test
+sudo chown -R swift:swift /mnt/sdb1/
+
+if ! [ -d /srv ]
 then 
     sudo mkdir /srv 
 fi
@@ -56,50 +58,59 @@ sudo mkdir -p /etc/swift/object-server /etc/swift/container-server /etc/swift/ac
 
 for x in 1 2 3 4 
 do
-  sudo mkdir -p /srv/$x/node/sdb$x
+  if [ ! -d "/srv/$x/node/sdb$x" ];then
+    sudo mkdir -p /srv/$x/node/sdb$x
+  fi
 done
 
 sudo mkdir -p /var/run/swift
 sudo  chown -R swift:swift /etc/swift /srv/1/ /srv/2/ /srv/3/ /srv/4/ /var/run/swift
 
-sudo echo -e "mkdir /var/run/swift \\n chown swift:swift /var/run/swift" >> /etc/rc.local  
+echo -e "mkdir /var/run/swift \\n chown swift:swift /var/run/swift" |sudo tee -a /etc/rc.local  
 
 if [ -e /home/swift/.bashrc ]
 then 
-   sudo echo -e "export SWIFT_TEST_CONFIG_FILE=/etc/swift/test.conf  \\n export PATH=${PATH}:~/bin" >> /home/swift/.bashrc 
+   echo -e "export SWIFT_TEST_CONFIG_FILE=/etc/swift/test.conf  \\n export PATH=${PATH}:~/bin" |sudo tee -a /home/swift/.bashrc 
    sudo source ~/.bashrc
 fi
 
 
 #configure swift and related conf
-if ! [ -e /etc/swift ]
+if ! [ -d /etc/swift ]
 then
     sudo mkdir /etc/swift
 fi
-chown swift:swift /etc/swift
+sudo chown swift:swift /etc/swift
 
 # copy conf files 
-cp --recursive conf/* /etc/swift/
-cp rsyncd.conf /etc
+sudo cp -R conf/* /etc/swift/
+sudo cp rsyncd.conf /etc
 sudo service rsync restart
 
 #some system need easy_install and pip
-apt-get -y install python-setuptools
-easy_install pip
+sudo apt-get -y install python-setuptools
+sudo easy_install pip
 
 #Install swift
 git clone git://github.com/openstack/swift.git
-cd swift ; pip install -r tools/pip-requires
-sudo python setup.py install; cd ..
+sudo chmod -R 755 swift 
+cd swift ; 
+sudo pip install -r requirements.txt
+sudo python setup.py install; 
+cd ..
 
 #Install swiftclient
 git clone https://github.com/openstack/python-swiftclient.git
-cd python-swiftclient; pip install -r tools/pip-requires
- sudo python setup.py install;cd ..
+sudo chmod -r 755 python-swiftclient 
+cd python-swiftclient; 
+sudo pip install -r requirements.txt
+sudo python setup.py install;
+cd ..
 
 #make ring and start server
-cd bin;sh remakerings
-swift-init main start
+cd bin;
+sudo sh remakerings
+sudo swift-init main start
 
 echo "Hi, SAIO is Finished......."
 
